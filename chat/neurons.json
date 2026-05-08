@@ -1,0 +1,234 @@
+{
+  "model_path": "J:/amr/models/gemma-4-E2B-it",
+  "device": "cuda:0",
+  "max_new_tokens": 900,
+  "_meta": {
+    "tier_legend": {
+      "verified":       "实机验证有效",
+      "thought_quality":"thought-segment 候选（来自 probe_thought.py）",
+      "general":        "跨域有效",
+      "lit":            "仅文学域稳定",
+      "math":           "数学/算法域 QA02 发现（LeetCode 233 cross-task probe）",
+      "candidate":      "n=1 候选未验证",
+      "guided_diff":    "QA01 guided-vs-native 差分新发现（A=Gemma原生 vs B=guide+Opus）"
+    },
+    "region_legend": {
+      "thought": "仅在 <|channel>thought ... <channel|> 段位生效（仅 think 模式）",
+      "answer":  "仅在 <channel|> 之后生效；非 think 模式下视作全程",
+      "always":  "thought 与 answer 段位都生效"
+    },
+    "recommended_for_code_non_think": "code_v1_RECOMMENDED",
+    "recommended_for_code_think":     "thought_anchor_v2",
+    "recommended_for_math_think":     "math_anchor_v1"
+  },
+  "known_neurons": [
+    {"id": "L15#1511",  "layer": 15, "index": 1511,  "default_gain": 2.0,  "tier": "verified",        "region": "answer",  "label": "[A] code/struct_layout_pos"},
+    {"id": "L26#449",   "layer": 26, "index": 449,   "default_gain": 2.0,  "tier": "verified",        "region": "answer",  "label": "[A] code/scaffold_amplify_pos"},
+    {"id": "L16#1298",  "layer": 16, "index": 1298,  "default_gain": -2.0, "tier": "verified",        "region": "always",  "label": "[*] code/anti_lazy_neg(both segments)"},
+
+    {"id": "L15#4995",  "layer": 15, "index": 4995,  "default_gain": 2.0,  "tier": "thought_quality", "region": "thought", "label": "[T] thought/specific_anchor_pos(rate0.11->0.54)"},
+    {"id": "L15#4270",  "layer": 15, "index": 4270,  "default_gain": 2.0,  "tier": "thought_quality", "region": "thought", "label": "[T] thought/specific_anchor_pos(rate0.13->0.51)"},
+    {"id": "L25#10262", "layer": 25, "index": 10262, "default_gain": 2.0,  "tier": "thought_quality", "region": "thought", "label": "[T] thought/specific_anchor_pos(rate0.05->0.37)"},
+    {"id": "L15#11278", "layer": 15, "index": 11278, "default_gain": 2.5,  "tier": "thought_quality", "region": "thought", "label": "[T] thought/T_d1_specific_pos_strongest(rate0.00->0.82)"},
+    {"id": "L34#6819",  "layer": 34, "index": 6819,  "default_gain": -1.5, "tier": "thought_quality", "region": "thought", "label": "[T] thought/SOP_template_neg"},
+    {"id": "L34#384",   "layer": 34, "index": 384,   "default_gain": -1.5, "tier": "thought_quality", "region": "thought", "label": "[T] thought/SOP_template_neg"},
+    {"id": "L34#1614",  "layer": 34, "index": 1614,  "default_gain": -1.5, "tier": "thought_quality", "region": "thought", "label": "[T] thought/SOP_template_neg"},
+    {"id": "L34#6608",  "layer": 34, "index": 6608,  "default_gain": -1.5, "tier": "thought_quality", "region": "thought", "label": "[T] thought/SOP_template_neg"},
+
+    {"id": "L17#11943", "layer": 17, "index": 11943, "default_gain": 2.0,  "tier": "thought_quality", "region": "thought", "label": "[T] thought/T_d1_specific_pos(rate0.00->0.46)"},
+    {"id": "L23#8588",  "layer": 23, "index": 8588,  "default_gain": -2.0, "tier": "thought_quality", "region": "thought", "label": "[T] thought/T_d1_specific_neg(rate0.00->0.24)"},
+    {"id": "L19#8648",  "layer": 19, "index": 8648,  "default_gain": -2.0, "tier": "thought_quality", "region": "thought", "label": "[T] thought/T_d1_specific_neg(rate0.00->0.49)"},
+    {"id": "L18#8398",  "layer": 18, "index": 8398,  "default_gain": -2.0, "tier": "thought_quality", "region": "thought", "label": "[T] thought/T_d1_specific_neg(rate0.00->0.58)"},
+    {"id": "L24#7991",  "layer": 24, "index": 7991,  "default_gain": -2.0, "tier": "thought_quality", "region": "thought", "label": "[T] thought/T_d1_specific_neg(rate0.00->0.63)"},
+    {"id": "L16#6159",  "layer": 16, "index": 6159,  "default_gain": -2.0, "tier": "thought_quality", "region": "thought", "label": "[T] thought/T_d1_specific_neg_strongest(rate0.00->0.85, BF16-only)"},
+
+    {"id": "L26#5430",  "layer": 26, "index": 5430,  "default_gain": -1.0, "tier": "general",         "region": "answer",  "label": "[A] general/tone_neg"},
+    {"id": "L27#2890",  "layer": 27, "index": 2890,  "default_gain": 1.5,  "tier": "general",         "region": "answer",  "label": "[A] general/long_structured_output_pos(answer-only; sign-flips in thought)"},
+
+    {"id": "L27#10024", "layer": 27, "index": 10024, "default_gain": -3.0, "tier": "lit", "region": "answer", "label": "[A] lit/d1_detail_neg"},
+    {"id": "L27#6644",  "layer": 27, "index": 6644,  "default_gain": 2.0,  "tier": "lit", "region": "answer", "label": "[A] lit/d3_depth_pos"},
+    {"id": "L32#9383",  "layer": 32, "index": 9383,  "default_gain": -2.0, "tier": "lit", "region": "answer", "label": "[A] lit/d2_structure_neg"},
+    {"id": "L32#8474",  "layer": 32, "index": 8474,  "default_gain": 1.0,  "tier": "lit", "region": "answer", "label": "[A] lit/d1_detail_pos"},
+    {"id": "L27#8968",  "layer": 27, "index": 8968,  "default_gain": 1.0,  "tier": "lit", "region": "answer", "label": "[A] lit/broad_conclusion_pos"},
+    {"id": "L34#8522",  "layer": 34, "index": 8522,  "default_gain": 1.0,  "tier": "lit", "region": "answer", "label": "[A] lit/d2_marker_pos"},
+    {"id": "L31#604",   "layer": 31, "index": 604,   "default_gain": -1.0, "tier": "lit", "region": "answer", "label": "[A] lit/d2_structure_neg"},
+    {"id": "L15#8146",  "layer": 15, "index": 8146,  "default_gain": 1.0,  "tier": "lit", "region": "answer", "label": "[A] lit/glue_fingerprint_pos"},
+    {"id": "L28#7686",  "layer": 28, "index": 7686,  "default_gain": -1.0, "tier": "lit", "region": "answer", "label": "[A] lit/d1_biased_neg"},
+    {"id": "L27#5590",  "layer": 27, "index": 5590,  "default_gain": -1.0, "tier": "lit", "region": "answer", "label": "[A] lit/d3_depth_neg"},
+    {"id": "L23#287",   "layer": 23, "index": 287,   "default_gain": -1.0, "tier": "lit", "region": "answer", "label": "[A] lit/d3_mid_suppress_neg"},
+
+    {"id": "L27#10897", "layer": 27, "index": 10897, "default_gain": 1.0,  "tier": "guided_diff", "region": "answer", "label": "[A] guided/opus_struct_pos(Δ=+0.412 vs Gemma-native)"},
+    {"id": "L27#8248",  "layer": 27, "index": 8248,  "default_gain": 1.0,  "tier": "guided_diff", "region": "answer", "label": "[A] guided/opus_struct_pos(Δ=+0.365 vs Gemma-native)"},
+    {"id": "L27#6013",  "layer": 27, "index": 6013,  "default_gain": 1.0,  "tier": "guided_diff", "region": "answer", "label": "[A] guided/opus_struct_pos(Δ=+0.353 vs Gemma-native)"},
+    {"id": "L27#7036",  "layer": 27, "index": 7036,  "default_gain": 1.0,  "tier": "guided_diff", "region": "answer", "label": "[A] guided/opus_struct_pos(Δ=+0.297 vs Gemma-native)"},
+    {"id": "L27#10300", "layer": 27, "index": 10300, "default_gain": 1.0,  "tier": "guided_diff", "region": "answer", "label": "[A] guided/opus_struct_pos(Δ=+0.267 vs Gemma-native)"},
+    {"id": "L27#5512",  "layer": 27, "index": 5512,  "default_gain": 1.0,  "tier": "guided_diff", "region": "answer", "label": "[A] guided/opus_struct_pos(Δ=+0.224 vs Gemma-native)"},
+    {"id": "L27#10719", "layer": 27, "index": 10719, "default_gain": 1.0,  "tier": "guided_diff", "region": "answer", "label": "[A] guided/opus_struct_pos(Δ=+0.202 vs Gemma-native)"},
+
+    {"id": "L26#10136", "layer": 26, "index": 10136, "default_gain": -2.5, "tier": "math", "region": "always",  "label": "[*] math/core_strategy_neg(dual-seg; A_d3 0.04->0.68)"},
+    {"id": "L16#8035",  "layer": 16, "index": 8035,  "default_gain": -2.0, "tier": "math", "region": "always",  "label": "[*] math/specific_knowledge_neg(dual-seg; A_d3 0->0.98)"},
+    {"id": "L15#11943", "layer": 15, "index": 11943, "default_gain": 1.5,  "tier": "math", "region": "always",  "label": "[*] math/specific_pos(dual-seg; T_glue 0.01->0.98, A_d3 0->0.77)"},
+    {"id": "L25#4879",  "layer": 25, "index": 4879,  "default_gain": -2.5, "tier": "math", "region": "answer",  "label": "[A] math/template_neg(strongest_cross-region; A_glue 0.62->0)"},
+    {"id": "L25#3178",  "layer": 25, "index": 3178,  "default_gain": -2.0, "tier": "math", "region": "answer",  "label": "[A] math/template_neg(A_glue 0.70->0.02, A_d2 0.69->0)"},
+    {"id": "L34#3696",  "layer": 34, "index": 3696,  "default_gain": -1.5, "tier": "math", "region": "answer",  "label": "[A] math/template_neg(d1+d2)"},
+    {"id": "L34#3169",  "layer": 34, "index": 3169,  "default_gain": -1.5, "tier": "math", "region": "answer",  "label": "[A] math/d2_conditional_neg(rate0->0.35)"},
+    {"id": "L17#7479",  "layer": 17, "index": 7479,  "default_gain": -1.5, "tier": "math", "region": "answer",  "label": "[A] math/d2_neg(rate0.97->0)"},
+    {"id": "L16#8358",  "layer": 16, "index": 8358,  "default_gain": 2.0,  "tier": "math", "region": "answer",  "label": "[A] math/anti_lazy_pos(diff+; flips Gemma's neg firing to pos)"},
+    {"id": "L15#258",   "layer": 15, "index": 258,   "default_gain": 2.0,  "tier": "math", "region": "answer",  "label": "[A] math/specific_knowledge_pos(rate_A=0 across d1/d2/code)"},
+    {"id": "L17#10314", "layer": 17, "index": 10314, "default_gain": 1.5,  "tier": "math", "region": "answer",  "label": "[A] math/d1_pos(rate0->0.39)"},
+    {"id": "L27#755",   "layer": 27, "index": 755,   "default_gain": 1.5,  "tier": "math", "region": "thought", "label": "[T] math/cot_specific_pos(T_glue rate0->0.72)"},
+
+    {"id": "L33#9054",  "layer": 33, "index": 9054,  "default_gain": 2.0,  "tier": "math", "region": "answer",  "label": "[A] math/correct_output_mode_pos(GB01 cross-region: out_common+0.74, out_diverg+0.71)"},
+    {"id": "L17#2838",  "layer": 17, "index": 2838,  "default_gain": -1.5, "tier": "math", "region": "thought", "label": "[T] math/cot_compressed_reasoning_neg(GB01 cot_diverg rate 0.30->0.60)"},
+    {"id": "L33#9511",  "layer": 33, "index": 9511,  "default_gain": -1.5, "tier": "math", "region": "always",  "label": "[*] math/gemma_verbose_neg(GB01 cross-seg; A>B in both cot+output)"},
+    {"id": "L15#150",   "layer": 15, "index": 150,   "default_gain": 1.5,  "tier": "math", "region": "answer",  "label": "[A] math/specific_knowledge_pos(GB01 out_diverg rate 0.15->0.51)"},
+    {"id": "L15#2067",  "layer": 15, "index": 2067,  "default_gain": -1.5, "tier": "math", "region": "always",  "label": "[*] math/concept_anchor_neg(GB01 cross-seg)"},
+
+    {"id": "L27#8010",  "layer": 27, "index": 8010,  "default_gain": 2.5,  "tier": "math", "region": "answer",  "label": "[A] math/B_correct_pos_strongest(GB01_blockwise B_max+2.74 A_max+0.34, 8x)"},
+    {"id": "L17#7444",  "layer": 17, "index": 7444,  "default_gain": -2.0, "tier": "math", "region": "answer",  "label": "[A] math/B_correct_neg(GB01_blockwise B_max+2.59 A_max+0.36, 7x)"},
+    {"id": "L20#2810",  "layer": 20, "index": 2810,  "default_gain": -2.0, "tier": "math", "region": "thought", "label": "[T] math/B_correct_early_neg(GB01_blockwise 14x B-only)"},
+    {"id": "L28#3943",  "layer": 28, "index": 3943,  "default_gain": 1.5,  "tier": "math", "region": "answer",  "label": "[A] math/B_correct_mid_pos(GB01_blockwise B_max+2.15)"},
+    {"id": "L23#1867",  "layer": 23, "index": 1867,  "default_gain": -1.5, "tier": "math", "region": "thought", "label": "[T] math/B_unique_neg(GB01_blockwise 60x B-only)"},
+    {"id": "L34#9243",  "layer": 34, "index": 9243,  "default_gain": -1.5, "tier": "math", "region": "answer",  "label": "[A] math/B_unique_neg(GB01_blockwise 12x)"},
+    {"id": "L21#4744",  "layer": 21, "index": 4744,  "default_gain": -1.5, "tier": "math", "region": "thought", "label": "[T] math/B_unique_neg(GB01_blockwise 13x)"},
+    {"id": "L15#5746",  "layer": 15, "index": 5746,  "default_gain": -1.5, "tier": "math", "region": "thought", "label": "[T] math/B_unique_early_neg(GB01_blockwise)"},
+    {"id": "L17#7873",  "layer": 17, "index": 7873,  "default_gain": 1.5,  "tier": "math", "region": "answer",  "label": "[A] math/B_correct_pos(GB01_blockwise 7x)"},
+    {"id": "L19#1010",  "layer": 19, "index": 1010,  "default_gain": 1.5,  "tier": "math", "region": "answer",  "label": "[A] math/B_correct_pos(GB01_blockwise)"},
+
+    {"id": "L26#12083", "layer": 26, "index": 12083, "default_gain": 1.0,  "tier": "candidate", "region": "answer", "label": "[A] code/gemini_only_pos"},
+    {"id": "L15#7439",  "layer": 15, "index": 7439,  "default_gain": 1.0,  "tier": "candidate", "region": "answer", "label": "[A] code/struct_layout_pos_dup"},
+    {"id": "L24#5158",  "layer": 24, "index": 5158,  "default_gain": -1.0, "tier": "candidate", "region": "answer", "label": "[A] code/gemini_suppress_neg"},
+    {"id": "L17#5551",  "layer": 17, "index": 5551,  "default_gain": 1.0,  "tier": "candidate", "region": "answer", "label": "[A] code/L17_pair_pos"},
+    {"id": "L17#4784",  "layer": 17, "index": 4784,  "default_gain": -1.0, "tier": "candidate", "region": "answer", "label": "[A] code/L17_pair_neg(sign-flips in thought)"},
+    {"id": "L34#3650",  "layer": 34, "index": 3650,  "default_gain": 1.0,  "tier": "candidate", "region": "answer", "label": "[A] code/late_layer_pos"},
+    {"id": "L34#3966",  "layer": 34, "index": 3966,  "default_gain": 1.0,  "tier": "candidate", "region": "answer", "label": "[A] code/late_layer_pos"},
+    {"id": "L34#1227",  "layer": 34, "index": 1227,  "default_gain": -1.0, "tier": "candidate", "region": "answer", "label": "[A] code/late_layer_neg"},
+    {"id": "L25#11331", "layer": 25, "index": 11331, "default_gain": 1.0,  "tier": "candidate", "region": "answer", "label": "[A] code/mid_layer_pos"},
+    {"id": "L15#8289",  "layer": 15, "index": 8289,  "default_gain": -1.0, "tier": "candidate", "region": "answer", "label": "[A] code/gemma_open_neg"}
+  ],
+  "presets": [
+    {"name": "baseline", "enabled": []},
+
+    {
+      "name": "code_v1_RECOMMENDED",
+      "enabled": ["L15#1511", "L26#449", "L16#1298"],
+      "_note": "实机最佳（非思考模式）"
+    },
+    {
+      "name": "thought_anchor_v1",
+      "enabled": [
+        "L15#4995", "L15#4270", "L25#10262",
+        "L34#6819", "L34#384",
+        "L16#1298",
+        "L15#1511", "L26#449"
+      ],
+      "_note": "Think 模式专用 dual-config：thought 段+知识锚定/-SOP 模板；anti_lazy 全程；answer 段沿用 V1。需开 Think 模式。"
+    },
+    {
+      "name": "thought_anchor_aggressive",
+      "enabled": [
+        "L15#4995", "L15#4270", "L25#10262", "L15#11278",
+        "L34#6819", "L34#384", "L34#1614", "L34#6608",
+        "L16#1298",
+        "L15#1511", "L26#449"
+      ],
+      "_note": "thought_anchor_v1 + 多个 SOP 模板抑制；如果 v1 半成功用这个加大剂量"
+    },
+    {
+      "name": "thought_anchor_v2",
+      "enabled": [
+        "L15#4995", "L15#4270", "L25#10262",
+        "L34#6819", "L34#384",
+        "L15#11278", "L17#11943",
+        "L23#8588", "L19#8648", "L18#8398", "L24#7991", "L16#6159",
+        "L16#1298",
+        "L15#1511", "L26#449"
+      ],
+      "_note": "v1 (T_d2 结构层) + T_d1 具体知识写入电路 7 神经元（来自 9-region 双段差分 BF16 重测）。需开 Think 模式。目标：让 thought 写出具体色码而非泛化描述。注意：UI/HTML 域专用，对数学题无效——数学题用 math_anchor_v1。"
+    },
+    {
+      "name": "math_anchor_v1",
+      "enabled": [
+        "L26#10136", "L16#8035", "L15#11943",
+        "L25#4879", "L25#3178", "L34#3696", "L34#3169", "L17#7479",
+        "L16#8358", "L15#258", "L17#10314",
+        "L27#755",
+        "L34#6608", "L34#1614",
+        "L17#4784",
+        "L16#1298",
+        "L26#449", "L15#1511"
+      ],
+      "_note": "数学/算法域 QA02 (LeetCode 233) 发现的 12 个 math 神经元 + v1/v2 跨域基础（L34#6608/1614 模板抑制 + L17#4784 防偷懒 + L16#1298 anti-lazy + V1 verified）。需开 Think 模式。目标：让 Gemma 写出 long long + min/max 的数位 DP 解法。"
+    },
+    {
+      "name": "math_anchor_v2",
+      "enabled": [
+        "L26#10136", "L16#8035", "L15#11943",
+        "L25#4879", "L25#3178", "L34#3696", "L34#3169", "L17#7479",
+        "L16#8358", "L15#258", "L17#10314",
+        "L27#755",
+        "L33#9054", "L17#2838", "L33#9511", "L15#150", "L15#2067",
+        "L17#4784",
+        "L16#1298",
+        "L26#449", "L15#1511"
+      ],
+      "_note": "v1 + GB01 minimal-edit 探针发现的 5 个新神经元（L33#9054 正确数学输出模式 + L17#2838 cot 压缩推理 + L33#9511 啰嗦抑制 + L15#150/L15#2067 数学知识/概念锚定）。移除了 L34#6819/L34#1614/L34#8522（GB01 显示在代码输出域 sign-flip）。需 Think 模式。"
+    },
+    {
+      "name": "math_anchor_v3",
+      "enabled": [
+        "L26#10136", "L16#8035", "L15#11943",
+        "L25#4879", "L25#3178", "L34#3696", "L34#3169", "L17#7479",
+        "L15#258", "L17#10314",
+        "L27#755",
+        "L17#2838", "L33#9511", "L15#150", "L15#2067",
+        "L27#8010", "L17#7444", "L20#2810", "L28#3943",
+        "L23#1867", "L34#9243", "L21#4744", "L15#5746",
+        "L17#7873", "L19#1010",
+        "L17#4784",
+        "L16#1298",
+        "L26#449", "L15#1511"
+      ],
+      "_note": "v2 + GB01_blockwise 探针发现的 10 个 B-unique 新神经元（L27#8010 最强正向, L17#7444/L20#2810 强负向 等）。移除了 L33#9054（确认是长输出模式不是关键决策）和 L16#8358（GB01 块级显示偏 A 侧）。块级探针信号 ±2.5，比 region 探针 ±0.7 强 3-5 倍。需 Think 模式。"
+    },
+    {
+      "name": "code_kill_lazy_only",
+      "enabled": ["L16#1298"]
+    },
+    {
+      "name": "code_v1_plus_general_tone",
+      "enabled": ["L15#1511", "L26#449", "L16#1298", "L26#5430"]
+    },
+    {
+      "name": "code_v2_extended",
+      "enabled": [
+        "L15#1511", "L26#449", "L16#1298",
+        "L15#7439", "L26#12083", "L27#2890"
+      ]
+    },
+    {
+      "name": "code_full",
+      "enabled": [
+        "L15#1511", "L26#449", "L16#1298",
+        "L15#7439", "L26#12083", "L27#2890",
+        "L17#5551", "L17#4784", "L34#3650", "L24#5158"
+      ]
+    },
+
+    {"name": "d3_only", "enabled": ["L27#6644"]},
+    {"name": "d2_only", "enabled": ["L32#9383"]},
+    {
+      "name": "depth_not_detail",
+      "enabled": ["L27#6644", "L27#10024"],
+      "overrides": {"L27#6644": 2.0, "L27#10024": -3.0}
+    },
+    {
+      "name": "depth_plus_structure",
+      "enabled": ["L27#6644", "L32#9383", "L34#8522"]
+    },
+    {
+      "name": "opus_global_tone",
+      "enabled": ["L26#5430", "L15#8146"]
+    }
+  ]
+}

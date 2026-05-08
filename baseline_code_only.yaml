@@ -1,0 +1,15 @@
+preset_name: "baseline_code_only"
+think_mode: true
+temperature: 0.0
+max_new_tokens: 8192
+
+enabled:
+  - id: "L15#1511"
+    gain: 2.0
+    region: "answer"
+  - id: "L26#449"
+    gain: 2.0
+    region: "answer"
+  - id: "L16#1298"
+    gain: -2.0
+    region: "always"

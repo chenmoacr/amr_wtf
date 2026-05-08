@@ -1,0 +1,46 @@
+# Mode D — triple crutch-off
+# Suppress inventory (23) + crutch_off recruits (30) + crutch_C recruits (30) = 83 neurons
+# Test whether further suppression continues to surface buried capability.
+
+mode_name: D
+description: "triple crutch-off — suppress inventory + crutch_off + crutch_C recruits"
+out_dir: J:/amr/amr_wtf/outputs/opus47_crutch_D
+
+suppression:
+  # Always-include amr_wtf inventory neurons (filtered)
+  include_inventory: true
+  inventory_tiers: [verified, general, lit, guided_diff]
+  inventory_regions: [answer, always]
+
+  # Plus top-N from each previous run's cum_neuron_down
+  add_recruits:
+    - source: J:/amr/amr_wtf/outputs/opus47_crutch_off/raw.pt
+      top_n: 30
+      label: crutch_off
+    - source: J:/amr/amr_wtf/outputs/opus47_crutch_C/raw.pt
+      top_n: 30
+      label: crutch_C
+
+training:
+  n_epochs: 4
+  lr: 1.0e-4
+  lora_r: 8
+  lora_alpha: 16
+  max_prompt_tokens: 1500
+  qa_ids: [1, 2, 3, 4, 5]
+  target_modules: [q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj]
+  weights:
+    concl: 2.0
+    filler: 0.5
+    glue: 0.1
+
+inference:
+  qa_id: 1
+  max_new_tokens: 1500
+  modes:
+    - label: mode_D_suppress_on
+      hooks_active: true
+      note: "training condition reproduced (83 neurons zeroed)"
+    - label: mode_D_ctrl_suppress_off
+      hooks_active: false
+      note: "LoRA only, all neurons available"

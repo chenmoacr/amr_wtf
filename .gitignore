@@ -1,0 +1,49 @@
+# --- Python ---
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+.venv/
+venv/
+env/
+
+# --- IDE / OS ---
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# --- Project artifacts (root only) ---
+# Teacher QA samples derived from Anthropic / Google commercial outputs;
+# not redistributable. See README section 3.7 / 7 for how to regenerate.
+/data/
+
+# Heavy experimental artifacts (.pt, .log, raw activations, lora adapters).
+# Reports under root and *.md / *.txt summarize the substantive findings.
+/outputs/
+
+# Decorative experiment screenshots (Chinese filenames cause cross-platform issues).
+/outher/
+
+# --- Binary research artifacts (anywhere) ---
+*.pt
+*.bin
+*.safetensors
+*.ckpt
+
+# --- LoRA adapter folders ---
+**/lora_adapter/
+
+# --- Logs ---
+*.log
+
+# --- Encoding artifact ---
+tree.txt
+
+# --- Local environment ---
+.env
+*.local.yaml
+*.local.json

@@ -1,0 +1,39 @@
+preset_name: "math_anchor_v6_no_think"
+think_mode: false
+temperature: 0.0
+max_new_tokens: 8192
+
+enabled:
+  # 全程：核心策略压制
+  - id: "L26#10136"
+    gain: -2.5
+    region: "always"
+  - id: "L16#8035"
+    gain: -2.0
+    region: "always"
+  - id: "L16#1298"
+    gain: -2.0
+    region: "always"
+
+  # Answer 段：纯代码生成增强（来自 B[6] B[7] 窗口的最强信号）
+  - id: "L34#6819"
+    gain: 2.5
+    region: "answer"
+  - id: "L34#3966"
+    gain: 2.0
+    region: "answer"
+  - id: "L34#3650"
+    gain: 2.0
+    region: "answer"
+  - id: "L27#2890"
+    gain: 2.0
+    region: "answer"
+  - id: "L26#449"
+    gain: 2.0
+    region: "answer"
+  - id: "L15#1511"
+    gain: 2.0
+    region: "answer"
+  - id: "L15#258"
+    gain: 2.0
+    region: "answer"

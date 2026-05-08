@@ -1,0 +1,50 @@
+preset_name: "math_anchor_v4"
+think_mode: true
+temperature: 0.0
+max_new_tokens: 8192
+
+enabled:
+  # ---- 纯 B-only 负向神经元（思考段逻辑触发器）----
+  - id: "L20#2810"
+    gain: -2.0
+    region: "thought"
+  - id: "L23#1867"
+    gain: -1.5
+    region: "thought"
+  - id: "L15#5746"
+    gain: -1.5
+    region: "thought"
+  - id: "L17#7444"
+    gain: -2.0
+    region: "always"
+
+  # ---- 末层 code-gen 增强 ----
+  - id: "L34#6819"
+    gain: 2.0
+    region: "always"
+  - id: "L34#3966"
+    gain: 1.5
+    region: "answer"
+  - id: "L34#3650"
+    gain: 1.5
+    region: "answer"
+
+  # ---- v3 已验证的核心 ----
+  - id: "L26#10136"
+    gain: -2.5
+    region: "always"
+  - id: "L16#8035"
+    gain: -2.0
+    region: "always"
+  - id: "L15#258"
+    gain: 2.0
+    region: "answer"
+  - id: "L15#1511"
+    gain: 2.0
+    region: "answer"
+  - id: "L26#449"
+    gain: 2.0
+    region: "answer"
+  - id: "L16#1298"
+    gain: -2.0
+    region: "always"

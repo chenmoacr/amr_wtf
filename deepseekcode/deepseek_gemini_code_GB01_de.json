@@ -1,0 +1,36 @@
+{
+    "Alist_v1": [
+        "This standard digit DP approach is complex to implement iteratively without recursion.",
+        "We need a helper function or careful loop structure.",
+        "This is too complex to implement quickly and correctly.",
+        "This confirms the complexity of the manual counting. The standard Digit DP structure is the most robust way.",
+        "The standard approach is usually implemented by iterating through the digits and calculating contributions based on the prefix."
+    ],
+    "Alist_v2": [
+        "We iterate through the positions i (from 0 to L-1). Let P be the prefix S[0...i-1]. Let d = S[i] (the digit at position i). Let R be the remaining part of N (suffix S[i+1...L-1]).",
+        "Case 2: Counting occurrences in numbers with the same number of digits as N, but smaller prefixes.",
+        "We will use a helper function or loop to calculate the count.",
+        "We iterate i from 0 to L-1 (position index). Let P be the prefix S[0...i-1]. Let d = S[i] (the digit at position i). Let R be the remaining part of N (suffix S[i+1...L-1])."
+    ],
+    "Blist": [
+        "Decomposition of n:\n   - For a given P, the digit at this position is: d = (n / P) % 10.\n   - The part of the number higher than P is the \"prefix\": high = n / (P * 10).\n   - The part of the number lower than P is the \"suffix\": low = n % P.",
+        "Counting Logic for Position P:\n   - A. Full Cycles Contribution:\n     The higher digits (prefix) represent how many full cycles of (P * 10) have been completed.\n     In each full cycle, the digit '1' appears exactly P times at the current position.\n     Contribution = high * P.",
+        "Case 1: d > 1\n       The current digit has already passed '1'. This means '1' appeared for its full duration at this position in the current cycle.\n       Contribution = P.\n     - Case 2: d == 1\n       The current digit is exactly '1'. The number of '1's depends on how far the suffix has progressed.\n       The numbers go from (prefix...100) to (prefix...1[low]).\n       Contribution = low + 1.\n     - Case 3: d < 1 (d == 0)\n       The current digit hasn't reached '1' yet.\n       Contribution = 0.",
+        "Loop from P = 1, multiplying by 10 each iteration, until P > n.",
+        "high = n / (P * 10);\n            int digit = (n / P) % 10;\n            long long low = n % P;",
+        "total_count += high * power_of_10;",
+        "if (digit > 1) {\n                total_count += power_of_10;\n            } else if (digit == 1) {\n                total_count += low + 1;\n            }"
+    ],
+    "A_pivot_window": {
+        "anchor": "Revised, simpler logic (standard method):",
+        "window_before": 15,
+        "window_after": 5
+    },
+    "_comment": {
+        "Alist_v1": "A 侧「迷路」混沌期的典型句子（混乱、退缩、认为复杂度高）",
+        "Alist_v2": "A 侧在字符串 Digit DP 里打转的句子（试图做 prefix/digit/suffix 分解但用了错误的方式——字符串下标）",
+        "Blist": "B 侧清晰正确的数位 DP 分解（high/digit/low 基于纯数学运算）",
+        "A_pivot_window": "A 侧 cotton 内唯一「顿悟」转折点，用于捕获转折前后的神经元变化",
+        "usage": "把 Alist_v1 和 Alist_v2 都跑一遍 blockwise 探针，分别与 Blist 做跨侧差分，两组差分取并集就是「B 专属的清晰推理神经元」"
+    }
+}

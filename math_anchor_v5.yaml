@@ -1,0 +1,60 @@
+preset_name: "math_anchor_v5"
+think_mode: true
+temperature: 0.0
+max_new_tokens: 8192
+
+enabled:
+  # ====== 思考段：纯 B-only 逻辑触发器（加大剂量） ======
+  - id: "L20#2810"
+    gain: -3.5
+    region: "thought"
+  - id: "L23#1867"
+    gain: -2.5
+    region: "thought"
+  - id: "L15#5746"
+    gain: -2.5
+    region: "thought"
+  - id: "L17#7444"
+    gain: -3.0
+    region: "thought"
+
+  # ====== 思考段：压制 A 侧「退缩/混乱」惯性 ======
+  # L27#2890 在 A 侧混沌期活跃(mean=+2.22)，压制它有助于减少「在多种方法间横跳」
+  - id: "L27#2890"
+    gain: -1.5
+    region: "thought"
+
+  # ====== 全程：v3 已验证的核心策略 ======
+  - id: "L26#10136"
+    gain: -2.5
+    region: "always"
+  - id: "L16#8035"
+    gain: -2.0
+    region: "always"
+  - id: "L16#1298"
+    gain: -2.0
+    region: "always"
+
+  # ====== Answer 段：代码生成增强（仅 Think 模式下生效） ======
+  - id: "L34#6819"
+    gain: 2.0
+    region: "answer"
+  - id: "L15#258"
+    gain: 2.0
+    region: "answer"
+  - id: "L15#1511"
+    gain: 2.0
+    region: "answer"
+  - id: "L26#449"
+    gain: 2.0
+    region: "answer"
+
+  # ====== Answer 段：压制 A 侧 answer 段的负向偏置 ======
+  # 这些在 deepseek 探针 B[6] B[7] 窗口强激活，但在 A 侧 answer 段也有一定激活
+  # 在 answer 段给正向 push，帮助正确代码落地
+  - id: "L34#3966"
+    gain: 1.5
+    region: "answer"
+  - id: "L34#3650"
+    gain: 1.5
+    region: "answer"

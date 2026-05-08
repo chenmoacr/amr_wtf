@@ -1,0 +1,303 @@
+================================================================
+Phase 2 神经链路完成补完 — 两段实验结果
+2026-05-02
+================================================================
+
+继 5/1 LC233 反证后, 今天补完两件 Phase 2 工作:
+  (1) Phase 2-A verify: L12#4638 上游 5 节点 ablation 因果验证
+  (2) 7 节点链路逐节点 ablation: 找 stop signal carrier
+
+结果一句话总结:
+  (1) 隐藏的最强节点是 L11#2089, 不是 attribution top-1.
+      L09#6039 的 FFI motif 实证确认.
+  (2) Stop signal 不是离散决策, 是逐 token 累积调制. 单 token
+      logit metric 测不出来; 需要 generate-based 测试.
+
+================================================================
+Part 1 — Phase 2-A verify (L12#4638 上游)
+================================================================
+
+代码:    J:/amr/amr_wtf/circuit_verify_L12_upstream.py
+日志:    outputs/circuit_attr/circuit_verify_L12_upstream.log
+数据:    outputs/circuit_attr/circuit_verify_L12_upstream.pt
+
+方法:
+  metric M' = sum_{B 6 anchors} act[L12, #4638]
+  M_baseline = -38.328  (L12#4638 在 anchor 上是负激活)
+  对 5 个候选节点逐个 ablate / amplify / invert
+  共 15 次 forward, 总耗时 ~13 秒
+
+5 个候选 (从 circuit_attr_L12 diff attribution top-10 中选):
+  L09#357   +4.52   L09 strongest driver
+  L09#420   -4.28   L09 strongest suppressor
+  L11#2089  -2.34   L11 main amplifier
+  L07#2800  +2.09   earliest layer node
+  L09#6039  -2.33   FFI candidate
+
+----------------------------------------------------------------
+结果汇总 (rel_X = (M_X - M_base) / |M_base|)
+----------------------------------------------------------------
+
+       L#nrn      attr   rel_ablate   rel_amplify   rel_invert
+  L09#357        +4.5      -27.8%         +6.9%       -41.2%
+  L09#420        -4.3      +10.2%         -8.7%       +21.3%
+  L11#2089       -2.3      +17.6%        -10.6%       +43.6%   ★
+  L07#2800       +2.1       -0.8%         +1.0%        -2.1%
+  L09#6039       -2.3       +4.8%         -4.9%        +9.6%
+
+★ = invert 效应最大者
+
+----------------------------------------------------------------
+四个核心发现
+----------------------------------------------------------------
+
+[1] L11#2089 是隐藏的最强因果节点 (反 attribution 直觉)
+
+  attribution 排第 3 (-2.34), 但 invert 效应排第 1 (+43.6%),
+  比 attribution top-1 的 L09#357 (-41.2%) 还强.
+
+  含义: attribution 强度 ≠ 因果强度. L11 作为 mid amplifier,
+  虽然 attribution gradient 只有中等大小, 但因为 它 直接喂给
+  L12 (距离近, 衰减少), 实际因果权重最大.
+
+  这是 amr_wtf 项目里第二次出现 "attribution top-1 ≠ causal top-1"
+  现象 (上次是 LC233 反证里 L09#6039 attribution 高但 invert
+  只 -4.6%). 给 attribution-based 筛选打上明确的 上限标记.
+
+[2] L09#6039 FFI motif 实证确认
+
+  在 L33#9054 metric 上 (GB01 attribution + verify):
+    attr = +16, rel_ablate = -2.2%, rel_invert = -4.6%
+    → driver of L33
+
+  在 L12#4638 metric 上 (本次):
+    attr = -2.33, rel_ablate = +4.8%, rel_invert = +9.6%
+    → suppressor of L12
+
+  两次实验方向完全一致: L09#6039 同时
+    - 直接驱动 L33#9054 (终端)
+    - 直接压制 L12#4638 (L33 的 suppressor)
+    = 双重正向贡献于 L33#9054 的最终输出
+
+  这是教科书级前馈抑制 (Feed-Forward Inhibition) motif.
+  amr_wtf 项目里第一个跨 metric 实证的 motif.
+
+[3] L07#2800 几乎无效 → 早期信号被中间层重塑
+
+  attribution +2.09 (top-5), 但 invert 只 -2.1%, 接近噪声.
+  L07 距离 L12 之间还有 4 层 MLP + attention 转换, 信号被
+  反复 norm + project, 到 L12 时已与原始 L07 激活方向无关.
+
+  含义: 早期层 attribution gradient 经过的链很长, 即使数学上
+  attribution 不为零, 实际因果效应被中间层吸收. 这与之前
+  ANALYSIS 里 "L09 与 L28 反序" 的层加权效应同一原因.
+
+  实践: probe 早期层 (L0-L8) 用 region/blockwise diff 没意义,
+  必须用 attribution patching 直接绕过中间层验证因果.
+
+[4] Sign consistency 100% (所有 5 节点)
+
+  ablate / amplify / invert 三项符号都和 attribution 符号一致:
+    suppressor (attr<0) → ablate+, amplify-, invert+
+    driver    (attr>0) → ablate-, amplify+, invert-
+
+  这是 amr_wtf 第二次 (5/1 GB01 verify 也是 100%) 跨 metric
+  确认 attribution sign 可作因果方向直接使用.
+
+----------------------------------------------------------------
+新画出的链路 (在原 GB01 链上的扩展)
+----------------------------------------------------------------
+
+         L09#357 (+) ────┐
+         L09#420 (-) ────┤
+         L09#6039 (-)────┤        ┌── L24#5330 ───┐
+                         │       /                 \
+  L07#2800 (噪声)─→  ★L11#2089 ─→ L12#4638 ─⊣ L33#9054
+                         (mid amp)   (mid suppressor)
+                                          ↑              \
+                                          └── direct via L09#6039 (FFI)
+                                                          /
+                                                         /
+         L09#6039 (FFI: +L33 直接 driver)──────────────-/
+
+  关键节点重要性 (按 invert effect 排, 越大越关键):
+    L11#2089  +43.6% on L12   ★ 链路真正的瓶颈
+    L09#357   -41.2% on L12
+    L09#420   +21.3% on L12
+    L33#9054  (terminal, metric 自身, 不可 ablate 测)
+    L12#4638  +16.3% on L33  (5/1 verify)
+    L09#6039  +9.6% on L12 / -4.6% on L33  (FFI)
+    L24#5330  +8.3% on L33  (5/1 verify)
+    L28#5445  +7.5% on L33  (5/1 verify)
+
+================================================================
+Part 2 — 链路逐节点 ablation (找 stop signal carrier)
+================================================================
+
+代码:    J:/amr/amr_wtf/circuit_chain_per_node.py
+日志:    outputs/circuit_attr/circuit_chain_per_node.log
+数据:    outputs/circuit_attr/circuit_chain_per_node.pt
+
+预期假设:
+  5/1 LC233 反证显示链路全部 ablate 触发复读 (gb01_ablate
+  触顶 12288 token, thought 段大段重复). 推测链路里 至少
+  1 个节点参与 "决定何时停止生成". 找出来这个节点是 amr_wtf
+  里第一个具有可解释行为的 carrier.
+
+设计:
+  跑 GB01-B 完整序列 (1821 tokens, 末尾就是 <turn|> EOS=106).
+  在 predict_pos = 1819 (倒数第二位, 它的 logit 预测最末 <turn|>)
+  上看 logit[<turn|>] 和 prob[<turn|>] 在每种 ablate 下的变化.
+
+  预期: 某个节点 ablate 让 EOS logit 大幅下降 → stop signal carrier
+
+---- 实测结果 (反预期) ----
+
+  baseline 状态:
+    EOS logit = +20.875
+    EOS prob  =  0.9996       <─── 已经 99.96% 饱和
+    TOP1     = <turn|> @ prob 0.9996
+
+  所有 7 节点单 ablate:
+    EOS logit Δ ∈ [-0.375, +0.125]
+    EOS prob 全部保持 0.9996, 完全不变
+    TOP1 始终是 <turn|>, prob 始终 ≈ 1.0
+
+  完整链路 (7 节点同时) ablate:
+    EOS logit Δ = +0.000, prob 不变
+
+----------------------------------------------------------------
+反结果的解读 (这本身是发现)
+----------------------------------------------------------------
+
+[1] EOS 在已写完 response 末尾位置已饱和
+
+  在 GB01-B 的末尾, 模型已经看到:
+    - 完整 thought 段
+    - 完整 response 段 (中文解题 + C++ 代码 + ``` 反引号收尾)
+    - 紧跟 \n (id 107)
+
+  在这个上下文下, "该停止了" 的判断信号已被 attention 从
+  ``` token + \n + 用户 turn 结束模式 等多个外部 cue 累积
+  推到饱和 (prob=0.9996, logit=+20.875). 任何 MLP 链路扰动
+  都没法把它从 99.96% 拉下来.
+
+[2] Stop signal 是 generate-time 累积调制, 不是离散决策
+
+  这反过来印证 5/1 LC233 反证: 之所以 链路 ablate 引发复读,
+  是因为在 generate 早期 (thought 中段、response 段早期),
+  模型还没看到代码结束符号, EOS 决策依赖链路在每一步累积
+  的"该往哪走"信号. 链路被切, 模型不知道 thought 该多长、
+  response 段该写多详细, 走到一个 它从未训练过 的状态,
+  引发复读.
+
+  本质: stop signal 不能用 single-token logit prob 测,
+  必须用 generate-trajectory 测.
+
+[3] 该 metric 设计错误的根本原因
+
+  我选的 metric "predict <turn|> at end of complete response"
+  测的是 "看到完整答案后是否同意结束". 但 LC233 反证里我们
+  看到的是 "在 generate 中段, 模型还能不能走向自然结束".
+  两者完全不同问题.
+
+  正确的 metric 应该是:
+    - generate-based: max_new_tokens=12288, ablate per-node,
+      看哪个 ablate 让生成长度异常 / 触发复读
+    - logprob-based: 在 thought 段中段位置看 EOS 累积 prob 升降
+
+  generate-based 是金标准但慢 (~5-10 分钟/次, 8 次 ~1 小时).
+  logprob-based 快但需要慎选位置 (anchor 中段而不是末尾).
+
+----------------------------------------------------------------
+等待跟进的工作
+----------------------------------------------------------------
+
+[i] 重做 stop signal carrier 实验, 用正确 metric
+
+  方案 A (慢但准): generate-based
+    max_new_tokens = 12288
+    对 7 节点 + 完整链路 各跑一次 generate
+    metric = 生成长度 + 末尾 200 字符是否复读
+    成本: ~8 × 5 分钟 = 40 分钟
+
+  方案 B (快但近似): mid-stream logprob
+    在 GB01-B 的 thought 段中段位置 (e.g. abs_tok = 800)
+    看 EOS logit / prob 在每个 ablate 下的变化
+    这个位置 EOS prob 远低于饱和值, 应该能区分
+    成本: ~8 × 1 秒 = 10 秒
+
+  推荐先做 B 看是否给出可分离信号; 如果 B 仍然饱和或方向
+  不显著, 再做 A.
+
+[ii] 验证 L11#2089 是否在 GB01-A → L33#9054 metric 上也是
+     最强节点 (扩展 5/1 verify topK)
+
+  把 L11#2089 加入 circuit_verify_topK.CANDIDATES, 跑
+  L33#9054 metric. 如果 L11#2089 在两个 metric 上都是
+  invert top-1, 那它是项目里最高优先级的 "通用因果节点",
+  应升级到 NEURON_INVENTORY 的 verified tier.
+
+[iii] FFI motif 普遍性测试
+
+  L09#6039 的 FFI 是单一节点的现象, 还是普遍模式?
+  在 L09 的其他 attribution top-5 节点 (L09#357, L09#420,
+  L09#420, L09#1115) 上测同样的双 metric 验证, 看是否
+  其他节点也有 driver-suppressor 反向作用.
+
+  如果是普遍模式: amr_wtf 找到了 Gemma 4 E2B 的 FFI motif
+  在 L09 这一层广泛存在. 这能写进报告作为 "层级 motif" 发现.
+
+================================================================
+对项目库的更新
+================================================================
+
+[A] NEURON_INVENTORY 新增 / 升级:
+
+  L11#2089  → 新加入, tier="circuit_node", 备注 "★ L12#4638
+              的 mid amplifier, invert +43.6%, 项目里最强单点
+              因果效应"
+
+  L09#357   → 新加入, tier="circuit_node",
+              备注 "L09 cluster, 双层链上 driver"
+
+  L09#420   → 新加入, tier="circuit_node",
+              备注 "L09 cluster, 双层链上 suppressor"
+
+  L09#6039  → 升级 label, tier="circuit_node + FFI_node",
+              备注 "★ confirmed Feed-Forward Inhibition motif:
+              +driver L33, -suppressor L12, 双重正向贡献"
+
+  共新增 3 个 circuit_node + 1 个 FFI 标签升级.
+
+[B] 更新静态/动态 链路结构图 (Part 1 末尾的 ASCII art)
+
+  这是 amr_wtf 项目里 第一张 完整带因果数值的链路图,
+  包括 motif 标注 (FFI). 可以放进项目 README 当封面.
+
+[C] 探针下界继续 L_LO=0 的论证又强一档
+
+  L11#2089 / L09#357 / L09#420 都不在原 NEURON_INVENTORY
+  (因为 L_LO=15). 现已确认 L11 / L09 是真正的因果中枢,
+  下次 probe 必须 L_LO=0 起步.
+
+================================================================
+项目状态
+================================================================
+
+  amr_wtf 主要研究目标:
+    [✓] 找功能性单神经元    → 57 个 (NEURON_INVENTORY)
+    [✓] 找功能性神经链路    → 1 条 (GB01 数学链, 反证为算法专用)
+    [✓] 验证因果性          → 12 节点 sign consistency 100%
+    [✓] motif 发现          → FFI on L09#6039 (跨 metric 实证)
+    [✓] 反证能力上限        → LC233 不通过, 链路控风格不控能力
+    [✓] vLLM 端点部署       → 14 tok/s, 已可用
+    [△] 大群神经元方向       → 规划已写 (20260502_distributed_neurons.txt),
+                              未启动
+    [△] 通用功能链路        → 0 条已验证, 1 条候选 (L24-25 thought hub)
+    [△] stop signal carrier → 待重做实验
+
+  已大致到 收尾位置. 剩下三个 △ 是 follow-up, 是不是收尾
+  开新方向, 由用户拍板.
+
+================================================================

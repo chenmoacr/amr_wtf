@@ -1,0 +1,210 @@
+================================================================
+大群神经元方向 — 研究方向规划
+2026-05-02
+================================================================
+
+来源:
+  amr_wtf 项目当前位置 = polysemantic raw neuron probing (~ 1990s-2010s
+  方法的复现, 不是 SAE). 通过 LC 233 反证 + 5 个 QA 链路盘点, 已经
+  暴露出 "单点神经元 / 单点链路" 框架的天花板:
+
+    - 57 个手挑神经元 + 1 条算法链 = localist 假设的产物
+    - 真正控制 "Opus 三层批注" 这种行为的, 大概率是
+      一群协同工作的神经元构成的方向, 而不是某一根
+
+  本文件给出"大群神经元"方向的定义、学术映射、以及在不增加显著
+  GPU 成本的前提下, 用现有数据立刻可做的执行路径.
+
+================================================================
+1) 概念定义
+================================================================
+
+  Localist representation (单点假设):
+    一个意义 ↔ 一个神经元 ("祖母细胞")
+    例: amr_wtf 当前认为 "L33#9054 = long-output stop signal"
+
+  Distributed representation (大群神经元假设):
+    一个意义 ↔ hidden state 的某个低维方向
+                = 数十-数百个神经元的线性组合 v
+    例: "Opus 风格批判力" 不是某个 #n, 是 v_L24 ∈ R^1536
+
+  Superposition (Anthropic 2022 提出):
+    模型用同一组神经元 同时承载 多个概念, 通过几何上不正交的
+    方向叠加实现 "用 N 维容纳 >N 个概念"
+    → 单点神经元必然是 polysemantic 的, 单点干预效应有上限
+
+  amr_wtf 当前所有 57 个神经元 + 7 节点链路, 在 distributed 假设
+  下都是 "概念群在 axis-aligned 维度上的 top-1 投影". 完整的
+  概念群在 hidden state 的某个旋转后的子空间里.
+
+================================================================
+2) 学术映射
+================================================================
+
+  按"接近 amr_wtf 当前位置"的远近排:
+
+  方法                 输出                       工作量    标志论文
+  ------------------+------------------------+--------+----------------
+  Linear Probe       每层一个 w_L 向量          0.5-1d   Conneau 2018
+                                                         Hewitt 2019
+                                                         Tenney 2019
+  CAV                某层 1 个概念向量 + 影响    1d       Kim 2018 (TCAV)
+                     量化指标
+  Steering Vector    可训练的 v_L, forward       2-3d     Subramani 2022
+                     时加 +α·v_L 控制行为                  Turner 2023
+                                                         Hernandez 2023
+  DAS                hidden state 的 d 维子      1-2 周   Geiger 2021,2023
+                     空间 + 因果 patching
+  SAE                65k+ monosemantic feature   1 周-数周 Anthropic 2024
+
+  amr_wtf 当前 = polysemantic raw neuron probing
+                 = 起点位置, 还没踏进上面任何一个
+
+  最容易迁移上去的: Linear Probe → CAV → Steering Vector
+  最难迁移上去的:   SAE (需要训练 autoencoder, GPU 重)
+
+================================================================
+3) 现有可用素材清单 (无需采集新数据)
+================================================================
+
+[A] QA01-05 (5 份 Opus 高质量答案)
+    - QA01 含 conclusion_analysis 三层标注:
+        depth_3_core_thematic    (6 条) 核心主题
+        depth_2_structural_narr  (8 条) 结构叙事
+        depth_1_technical_surf   (3 条) 技术表面
+      + glue_sentences (13 条)
+    - QA02-05 至少有 input + Opus output, 可以做 paired
+    - 可以用 E2B 原生直出当 paired bad sample, 0 成本扩展
+
+[B] GB01 paired (A 错答 / B 对答, 6 个 anchor)
+    - 已经用过 attribution patching, 可继续用作 distributed 实验
+
+[C] 9633 条 opus46_final.jsonl
+    - 数学/逻辑题占 98%, paired 价值低, 但作为 dense baseline
+      activation 提取数据集很好
+
+[D] 已建好基建
+    - probe_GB01_blockwise.py / probe_thought.py 等 hook 模式
+    - sae_api_server / vLLM 端点 (BF16 推理)
+    - circuit_verify_topK.py (ablation 验证模板)
+
+================================================================
+4) 推荐执行路径 (最小可行版本, 0.5-1 天)
+================================================================
+
+[Step 1] 构造 paired 数据集 (~1 小时)
+  对 QA01-05 五题, 每题:
+    1. Opus output → "good" 样本 (label=1)
+    2. E2B 原生直出 (do_sample=False) → "bad" 样本 (label=0)
+    3. 可选: 把 conclusion_analysis 中的 depth_3 高分段单独切出
+       作为 "high-quality fragment" (label=2 或 1.5)
+
+  产物: data/distributed/paired_qa.json
+        每条 {prompt, response, source, label, depth?}
+
+[Step 2] 提取每层 hidden state (~1-2 小时)
+  对每条样本跑一次 forward (BF16 cuda, 已有 hook 模式):
+    - 在 response token 范围上 mean-pool
+    - 拿每层 down_proj 入口的 intermediate 维度均值: [N, 35, 6144]
+    - 也拿每层 hidden state (residual stream): [N, 35, 1536]
+  保存为 outputs/distributed/hidden_states.pt
+
+[Step 3] 训 Linear Probe (~10 分钟, sklearn)
+  对每层 L:
+    from sklearn.linear_model import LogisticRegression
+    clf = LogisticRegression(C=0.01, penalty='l2', max_iter=500)
+    clf.fit(X[:,L,:], y)
+    record_acc(L), record_w(L) = clf.coef_
+
+  输出:
+    - per_layer_accuracy.csv  (L, acc) — 概念在哪几层最 separable
+    - quality_directions.pt   (35, hidden_size) — 每层的概念方向
+
+[Step 4] 与 NEURON_INVENTORY 对照 (~30 分钟)
+  对每层 v_L 的 |coef|:
+    - 取 top-50 维度
+    - 检查这 50 个 (L, n) 与 NEURON_INVENTORY 中已知 57 个的重合度
+
+  期望:
+    - 高重合 (>50%): 手挑 inventory 反映了真实群体, project 之前的
+                     单点结论可以升级到 distributed 表述
+    - 低重合 (<20%): 手挑 inventory 是单点偶然采样, 真实概念群在别处
+                     - 这本身是更有价值的发现
+
+[Step 5] 因果验证: 把 v_L 当 steering vector (~30 分钟)
+  在推理时 hook L 层加 + α · v_L (α ∈ {-1, +1, +2}):
+    - 跑 5 个 prompt 的 baseline (α=0) vs steered
+    - 用 perplexity / token diff / 人工对比 评估输出向 Opus 偏移程度
+    - 类比 ANALYSIS.txt 里 chain ablate/amplify 的对照实验
+
+  这一步把 "linear probe 找到的方向" 变成 "可主动控制的旋钮",
+  完成从 distributed representation discovery 到 active steering
+  的闭环.
+
+================================================================
+5) 进阶分支 (可选, 1-2 周)
+================================================================
+
+[Branch A] CAV + TCAV 量化
+  把 v_L 转成 Concept Activation Vector, 用 TCAV score 衡量
+  "Opus 风格" 这个概念对每个 logit 的影响. 这给出每个 token
+  位置上的 concept-causal 强度, 比 linear probe 更细.
+
+[Branch B] Steering Vector 训练
+  不用 sklearn, 改用 contrastive loss 训一个 v_L:
+    L = -log P(good) - log(1 - P(bad))
+    把 v_L 加到 hidden state 后再过模型
+  比 probe-derived 方向更直接 (优化目标是行为不是 separability).
+
+[Branch C] DAS — Distributed Alignment Search
+  在 hidden state 上找一个 d 维 (d=16 or 64) 子空间 R, 使得
+  patch R 子空间内的激活, 能完全等价于 patch 一个抽象高层变量.
+  这才是真正的"分布式因果", 但工作量是 amr_wtf 全套 attribution
+  的 2-3 倍, 不建议一开始做.
+
+[Branch D] SAE 训练
+  在 base model 冻结的情况下训一个 sparse autoencoder, 输出几万
+  monosemantic feature. 这是机理可解释性圈的 SOTA, 但单次训练
+  成本 ~100-1000 GPU 小时. amr_wtf 现有规模做不动, 跳过.
+
+================================================================
+6) 与"补完链路"工作的关系
+================================================================
+
+  本方向 (distributed) 和 已有 链路方向 (causal chain) 不冲突,
+  是同一现象的两种解码:
+
+    - 链路 = 沿层方向的因果传递
+    - 大群 = 跨层方向的协同表征
+
+  完整的 amr_wtf 升级版应该:
+    1. 先完成现有链路挖掘 (Phase 2-A verify + 7 节点逐一 ablate)
+    2. 再做 distributed probe (本文件 Step 1-5)
+    3. 把两边产物对照: 链路上的关键节点 与 v_L top-50 是否重合?
+    4. 最终输出: amr_wtf v2 = "raw neuron probing + linear probe
+       双 view" 的混合方法
+
+================================================================
+7) 不做的事
+================================================================
+
+  以下 在本规划中明确排除:
+
+  - 在 31B Dense / 26B MoE 上重做 (今日反证已证明边际收益反而更低)
+  - 训完整 SAE (GPU 预算不允许)
+  - 跑全 9633 条 opus46_final 提取激活 (类别分布过偏, 信噪比差)
+  - LoRA / SFT (这是另一个项目, 不属于解释性研究)
+
+================================================================
+8) 时间表
+================================================================
+
+  T+0   ~  1d:   Step 1-3, 得到 35 层 quality_directions.pt
+  T+1d  ~  2d:   Step 4-5, 与 inventory 对照 + steering 验证
+  T+2d:          总结报告, 决定是否做 CAV / Steering 训练
+  T+1w:          (可选) Branch A 或 B
+  T+2w 之后:      停, 进入 documentation 阶段
+
+  整个方向的硬上限: 2 周, 然后回到 amr_wtf 项目收尾.
+
+================================================================

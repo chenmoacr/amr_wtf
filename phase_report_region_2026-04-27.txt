@@ -1,0 +1,85 @@
+阶段性报告（Gemma vs Opus 跨QA区域化神经元差分）
+日期：2026-04-27
+目录：J:\amr\amr_wtf
+
+一、阶段目标
+本阶段目标是把原先“全回答全局平均”的神经元差分分析，升级为“按输出语义区间分桶”的跨QA稳定分析，重点识别更接近结论深度（d1/d2/d3）而非填充语句（glue）的功能性神经元。
+
+二、数据与标注状态
+1) 已完成5个QA样本标注，字段包含：
+   - conclusion_analysis.depth_1_technical_surface
+   - conclusion_analysis.depth_2_structural_narrative
+   - conclusion_analysis.depth_3_core_thematic
+   - glue_sentences
+2) 区间标签定义：
+   0=unlabeled, 1=glue, 2=d1_surface, 3=d2_structural, 4=d3_thematic
+
+三、方法与代码落地
+1) 标注映射校验脚本
+   - 文件：region_label_check.py
+   - 作用：不加载模型，仅验证“标注句 -> token区间”可映射性
+   - 核心：difflib 模糊匹配 + 短句 exact fallback
+   - 阈值：MIN_BLOCK=6，MIN_COVERAGE=0.5
+2) 区域化采样主流程
+   - 文件：region_probe.py
+   - 作用：对每个QA分别生成 diff_regions.pt
+   - 核心：forward hook 内按 region mask 分桶累计 sum/sumsq/active/count
+3) 跨QA区域分析
+   - 文件：region_analysis.py
+   - 作用：聚合5个QA，输出区域top、特异性榜单、正负向分裂榜单，并保存 region_summary.pt
+
+四、标注映射质量（label check）
+覆盖率结果：
+- QA01: 85.3%
+- QA02: 92.5%
+- QA03: 93.5%
+- QA04: 97.0%
+- QA05: 56.7%
+结论：前4个样本映射质量高；QA05因标注文本存在较强改写/释义导致覆盖偏低，后续如需提高精度可追加更强对齐策略。
+
+五、产出物
+1) 每QA区域差分文件（已生成）
+   - outputs/qa01/diff_regions.pt
+   - outputs/qa02/diff_regions.pt
+   - outputs/qa03/diff_regions.pt
+   - outputs/qa04/diff_regions.pt
+   - outputs/qa05/diff_regions.pt
+2) 跨QA区域汇总文件（已生成）
+   - outputs/region_summary.pt
+
+六、核心发现（当前阶段）
+1) L27#10024
+   - 在d1_surface区域更强，不是“纯d3主题轴”
+   - 更像“表层结论/批评推进”相关神经元
+2) L27#6644
+   - d3-specific 信号显著（相对glue有明显优势）
+   - sign一致性高，候选为“主题深化/结论核心化”轴
+3) L32#9383
+   - d2_structural 区域最强，偏结构组织/叙事骨架轴
+4) L26#5430
+   - 跨区间较均匀，倾向“全局基调/降噪”而非单一区域专属
+
+七、工程问题与修复
+1) Python环境路径问题已修复（切换到可用conda环境解释器）
+2) OMP duplicate 冲突通过 KMP_DUPLICATE_LIB_OK=TRUE 规避
+3) 标注漏匹配通过“模糊匹配+短句精确回退”显著改善
+4) hook阶段region mask已对齐到GPU，避免潜在device mismatch
+
+八、当前限制
+1) 样本量仍小（n=5），跨题型泛化结论需更多QA验证
+2) 标注本身存在主观性，尤其在释义较强文本上会影响边界
+3) 目前差分基于对齐截断窗口，极长回答尾部信息被截断
+
+九、下一步建议（按优先级）
+1) 单神经元验证
+   - 先做 L27#6644 单独clamp，验证是否稳定增强“d3主题深度”
+2) 组合方向验证
+   - 做“+L27#6644 与 -L27#10024”联合clamp，测试能否形成“加深主题、抑制表层批评”效应
+3) 结构轴联合实验
+   - 加入 L32#9383 作为结构支撑轴，比较文本组织性变化
+4) 评估指标建议
+   - 自动：区间句占比变化（d3/d1、d3/glue）
+   - 半自动：主题一致性、结构完整性、结论深度评分
+
+十、阶段结论
+本阶段已从“全局差分”成功升级到“区域化跨QA差分”，并形成可操作的候选神经元池与验证路线。当前最有价值的推进方向是围绕 L27#6644（d3轴）开展单点与组合clamp实验，验证可控“Opus化深度”是否可稳定复现。

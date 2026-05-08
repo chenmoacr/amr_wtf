@@ -1,0 +1,25 @@
+# Core ML stack. Versions chosen to match the project's actual environment
+# (conda env `gemmapreview`); upper bounds intentionally omitted.
+torch>=2.6.0
+transformers>=5.0.0
+accelerate>=0.30.0
+peft>=0.10.0
+bitsandbytes>=0.43.0
+sentencepiece>=0.2.0
+safetensors>=0.4.0
+
+# Data / config
+pyyaml>=6.0
+numpy>=1.26.0
+
+# OpenAI-compatible API server (sae_api_server.py / chat_proxy.py)
+fastapi>=0.110.0
+uvicorn[standard]>=0.27.0
+
+# Note: tkinter (used by chat/app.py) ships with the Python standard library
+# on Windows. On Linux it must be installed via the system package manager
+# (e.g. `apt install python3-tk`).
+
+# Note: this file is intentionally minimal. Hardware-specific or distribution-
+# specific dependencies (CUDA wheels, bitsandbytes binaries on Windows) must
+# be installed by the user according to their environment.

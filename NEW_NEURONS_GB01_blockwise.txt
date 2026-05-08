@@ -1,0 +1,94 @@
+==============================================================
+GB01 块级探针（probe_GB01_blockwise.py）发现的新神经元
+日期: 2026-04-28
+来源: J:\amr\amr_wtf\outputs\gemma_code_GB01\blockwise.pt
+==============================================================
+
+## 方法学
+- 数据: gemma_code_GB01.json (A=Gemma 失败轨迹, B=Gemma 用 Gemini 重建 cot 后的成功轨迹)
+- 锚点: gemma_code_GB01_de.json (Gemini 抽出的 5 个 A 侧关键句 + 6 个 B 侧关键句)
+- 覆盖率验证: 11/11 anchors 找到 (5 exact + 6 fuzzy ≥0.75)
+- 关键改进 vs region 探针: 不再做大 region 平均（700+ token 稀释信号），
+  改为对每个 anchor 的窗口（5-150 token）单独捕获 mean activation
+- 信号强度: 块级 ±2.5 vs region 探针 ±0.7 (3-5x 提升)
+
+## 跨侧 diff top 10（B 独有的电路）
+按 |B_max - A_max| 排序，L>=15
+
+| rank | id        | B_max  | A_max  | signed | 推荐 gain | 备注                          |
+|------|-----------|--------|--------|--------|-----------|-------------------------------|
+|  1   | L27#8010  | +2.736 | +0.338 | +2.398 | +2.5      | 最强 B-only 正向 (8x)         |
+|  2   | L26#10136 | +6.872 | +4.464 | -2.408 | -2.5      | math tier 已有, 跨任务再确认  |
+|  3   | L17#7444  | +2.585 | +0.360 | -2.225 | -2.0      | 7x B-only 负向                |
+|  4   | L20#2810  | +2.207 | +0.157 | -2.050 | -2.0      | 14x B-only 负向               |
+|  5   | L28#3943  | +2.152 | +0.440 | +1.712 | +1.5      | 5x B-only 正向                |
+|  6   | L23#1867  | +1.556 | +0.026 | -1.530 | -1.5      | 60x B-only 负向 (signal 最纯) |
+|  7   | L34#9243  | +1.618 | +0.137 | -1.481 | -1.5      | 12x B-only                    |
+|  8   | L21#4744  | +1.596 | +0.119 | -1.477 | -1.5      | 13x B-only                    |
+|  9   | L17#2838  | +2.038 | +0.625 | -1.413 | -1.5      | math tier 已有, 再确认        |
+|  10  | L15#5746  | +1.669 | +0.360 | -1.308 | -1.5      | 早层负向 B-only               |
+
+补充强信号:
+| L17#7873  | +1.532 | +0.227 | +1.306 | +1.5 | 7x 正向     |
+| L19#1010  | +1.373 | +0.148 | +1.225 | +1.5 | 中层正向    |
+| L15#258   | +1.907 | +0.893 | +1.014 | +1.0 | 已有, 再确认|
+
+## 已加进 chat/neurons.json 的 10 个新 math 神经元
+（math tier, 自动 region 路由）
+
+L27#8010   gain=+2.5  region=answer  math/B_correct_pos_strongest
+L17#7444   gain=-2.0  region=answer  math/B_correct_neg
+L20#2810   gain=-2.0  region=thought math/B_correct_early_neg
+L28#3943   gain=+1.5  region=answer  math/B_correct_mid_pos
+L23#1867   gain=-1.5  region=thought math/B_unique_neg(60x)
+L34#9243   gain=-1.5  region=answer  math/B_unique_neg
+L21#4744   gain=-1.5  region=thought math/B_unique_neg
+L15#5746   gain=-1.5  region=thought math/B_unique_early_neg
+L17#7873   gain=+1.5  region=answer  math/B_correct_pos
+L19#1010   gain=+1.5  region=answer  math/B_correct_pos
+
+## 新预设 math_anchor_v3
+math_anchor_v3 = math_anchor_v2 - L33#9054 - L16#8358 + 上面 10 个
+
+移除原因:
+- L33#9054: 块级 diff 没进 top 40。在 v2 region 探针里它跨 common+divergent 同步亮,
+  确认是"长输出模式"通用 mode, 不是关键决策。clamp +2.0 让模型陷入超啰嗦
+  (24026/17818 字符), 思考预算变大但不变正确。
+- L16#8358: 块级 A_max=1.146, B_max=0.216, 偏 A 侧。和 QA02 region 结论冲突,
+  保守起见从 v3 移除。
+
+## 实测建议（明天）
+
+跑:
+  python J:\amr\amr_wtf\run_preset_leetcode233.py math_anchor_v3 1.0
+
+成功率指标:
+1. 是否走数位 DP（high/digit/low 分解）= 策略
+2. 是否在 d==1 case 写出 +low+1 = 关键公式
+3. 是否在 d>1 case 写出 +P 而不是其他 = 边界 case
+4. 输出是否过长 (>10000 字符 = 仍在啰嗦模式)
+
+如果 v3 仍失败, 调试方向:
+A) 拉高 alpha: math_anchor_v3 1.2 / 1.5
+B) 单独验证 L27#8010: 只开 L27#8010 + L26#449 + L15#1511, alpha=1.0,
+   看是否能引出"做对"的特征 (隔离测试)
+C) 关掉 thought-region 神经元只留 answer-region,
+   看是否问题出在 cot 阶段而非答案阶段
+
+## L34 簇的 sign-flip 警告（之前发现, 块级再确认）
+
+L34#8522 在块级显示 A_max=1.230, B_max=0.030, 是纯 A 侧信号。
+确认这是"风格神经元"(verbose prose)而非"功能神经元"。
+v3 已不包含 L34#8522. v1/v2 中的 L34#8522 应在数学题预设中关掉。
+
+L34#6819, L34#6608, L34#1614 在 GB01 块级也偏 A 侧, 但暂保留。
+未来用 cross-task QA 集体验证后再决定是否大规模修改。
+
+## 文件位置
+- 探针脚本:     J:\amr\amr_wtf\probe_GB01_blockwise.py
+- 锚点覆盖检查: J:\amr\amr_wtf\check_anchor_coverage.py
+- 数据(成对):   J:\amr\amr_wtf\data\gemma_TargetedDrugs\gemma_code_GB01.json
+- 锚点列表:     J:\amr\amr_wtf\data\gemma_TargetedDrugs\gemma_code_GB01_de.json
+- 输出:         J:\amr\amr_wtf\outputs\gemma_code_GB01\blockwise.pt
+- 实测脚本:     J:\amr\amr_wtf\run_preset_leetcode233.py
+- 神经元注册表: J:\amr\amr_wtf\chat\neurons.json (math tier + math_anchor_v3)
