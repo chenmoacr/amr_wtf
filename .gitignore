@@ -17,9 +17,22 @@ env/
 Thumbs.db
 
 # --- Project artifacts (root only) ---
-# Teacher QA samples derived from Anthropic / Google commercial outputs;
-# not redistributable. See README section 3.7 / 7 for how to regenerate.
-/data/
+# Most teacher QA samples are derived from third-party commercial model
+# outputs and are not redistributed. The five core paired QA samples
+# (claudeopusQA01-05) and the JSON template are explicitly opted in below
+# as the canonical demonstration set. See README section 3.7 / 7.
+#
+# Note: in gitignore syntax, `/data/` would exclude the directory entirely
+# and prevent any `!` re-include from working. Using `/data/*` instead lets
+# git recurse into the directory but excludes everything in it by default,
+# so the `!` exceptions below can re-include specific files.
+/data/*
+!/data/claudeopusQA01.json
+!/data/claudeopusQA02.json
+!/data/claudeopusQA03.json
+!/data/claudeopusQA04.json
+!/data/claudeopusQA05.json
+!/data/JSON template.json
 
 # Heavy experimental artifacts (.pt, .log, raw activations, lora adapters).
 # Reports under root and *.md / *.txt summarize the substantive findings.

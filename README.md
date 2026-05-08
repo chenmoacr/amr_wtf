@@ -417,6 +417,12 @@ with that license. Teacher-paired QA samples in `data/` are not redistributed
 and must be regenerated locally by users with access to the teacher models in
 question.
 
+### 10. Contact
+
+Author: IndexGuc
+Email: indexguc@gmail.com
+Issues / discussion: please open an issue on the project's GitHub repository.
+
 ---
 
 ## 中文
@@ -754,3 +760,9 @@ A hallucination-driven behavior-vector extraction method for small language mode
 本仓库代码用于研究用途。Gemma 4 E2B-it 模型受 Google Gemma Terms of Use 约
 束，下游使用者须遵守该许可。`data/` 中的教师配对 QA 样本未随仓库分发，需要
 复现的用户应在本地使用对应教师模型重新生成。
+
+### 10. 联系方式
+
+作者：IndexGuc
+邮箱：indexguc@gmail.com
+issues / 讨论：欢迎在项目 GitHub 仓库提 issue。
